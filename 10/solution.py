@@ -14,53 +14,59 @@ Part 2:
 Multiply values of microchips in outputs 0, 1 and 2.
 '''
 
+from collections import deque, defaultdict
 import re
 
 
-def process_instruction(line):
-    # Newly encountered bots are added with empty list values       
-    for bot in re.finditer(r'bot (\d+)', line):
-        id = int(bot.group(1))
-        if id not in bots:
-            bots[id] = []
+def process_instruction(
+        instruction: str, 
+        bots: defaultdict[int, list[int]], 
+        outputs: dict[int, int]
+) -> bool:
+    '''Execute instruction and return True if the source
+    is either an input chip or a bot for which both its
+    values are already known. Else, return False'''
 
-    line = line.split(' ')
-    if line[0] == 'value':
-        val, id = int(line[1]), int(line[5])
-        bots[id].append(val)
+    if instruction.startswith('value'):
+        val, bid = map(int, re.findall(r'\d+', instruction))
+        bots[bid].append(val)
         return True
     else:
-        id = int(line[1])
-        if len(bots[id]) == 2:
+        bid = int(re.search(r'\d+', instruction).group())
+        if len(bots[bid]) == 2:
             # Bot has both values, we can carry out instruction
-            low, high = sorted(bots[id])
-            low_id, high_id = int(line[6]), int(line[11])
-            if line[5] == 'bot':
+            low, high = sorted(bots[bid])
+            low_t, high_t = re.findall(r'(output|bot)', instruction)[1:]
+            low_id, high_id = map(int, re.findall(r'\d+', instruction)[1:])
+            if low_t == 'bot':
                 bots[low_id].append(low)
             else:
                 outputs[low_id] = low
-            if line[10] == 'bot':
+            if high_t == 'bot':
                 bots[high_id].append(high)
             else:
                 outputs[high_id] = high
             return True
         else:
-            # We'll revisit this line when bot has both values
+            # Revisit this instruction when bot has both values
             return False
 
+if __name__ == '__main__':
 
-outputs = {}  # int: int
-bots = {}  # int: list
+    outputs = {}  # int: int
+    bots = defaultdict(list)  # int: list[int]
 
-with open('input.txt') as f:
-    instructions = f.readlines()
-    while instructions:
-        instructions = [i for i in instructions if not process_instruction(i)]
+    with open('input.txt') as f:
+        instruction_queue = deque(f.readlines())
+        while instruction_queue:
+            instruction = instruction_queue.popleft()
+            if not process_instruction(instruction, bots, outputs):
+                instruction_queue.append(instruction)
+            
+    # Part 1
+    for bid, values in bots.items():
+        if sorted(values) == [17, 61]:
+            print(bid)
 
-# Part 1
-for id in bots:
-    if sorted(bots[id]) == [17, 61]:
-        print(id)
-
-# Part 2
-print(outputs[0] * outputs[1] * outputs[2])
+    # Part 2
+    print(outputs[0] * outputs[1] * outputs[2])
