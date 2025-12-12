@@ -50,8 +50,7 @@ class Point:
     def __eq__(self, other):
         '''Check for equality with other point'''
         if not isinstance(other, Point):
-            print('Can not compare Point object with non-Point object')
-            raise TypeError
+            raise TypeError('Can not compare Point with non-Point object')
         return self.x == other.x and self.y == other.y
 
     def __repr__(self):
