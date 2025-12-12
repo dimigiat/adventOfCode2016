@@ -4,7 +4,7 @@
 4 5 6
 7 8 9
 Each digit is provided in the instructions as a string of L/U/D/R 
-characters to move around the keyboard. The starting point is "5" 
+characters to move around the keyboard. The starting point is '5' 
 for the first digit and the last found digit for the rest of them.
 
 ** Same, but with the following keypad design
@@ -15,42 +15,20 @@ for the first digit and the last found digit for the rest of them.
     D
 '''
 
-with open('input.txt') as file:
-    instructions = [item.strip() for item in file.readlines()]
-
-
-# ----------------------- Part 1 ------------------------- #
-
-digit = 5
-
-solution_1 = []
-
-for key in instructions:
-    for move in key:
-        if move == 'L':
-            digit -= 0 if digit % 3 == 1 else 1
-        elif move == 'R':
-            digit += 0 if digit % 3 == 0 else 1
-        elif move == 'U':
-            digit -= 0 if (digit - 1) // 3 == 0 else 3
-        elif move == 'D':
-            digit += 0 if (digit - 1) // 3 == 2 else 3
-    solution_1.append(digit)
-
-print(solution_1)
-
-# ----------------------- Part 2 ------------------------- #
-
-solution_2 = []
+SQUARE_KEYPAD_SHIFTS = {
+    'L': lambda digit : 0 if digit % 3 == 1 else -1,
+    'R': lambda digit : 0 if digit % 3 == 0 else 1,
+    'U': lambda digit : 0 if (digit - 1) // 3 == 0 else -3,
+    'D': lambda digit : 0 if (digit - 1) // 3 == 2 else 3
+}
 
 # Grid radius of rhomb padlock
 RADIUS = 2
-
 MOVES = {
-        "L": (-1, 0),
-        "R": (1, 0),
-        "U": (0, 1),
-        "D": (0, -1)
+        'L': (-1, 0),
+        'R': (1, 0),
+        'U': (0, 1),
+        'D': (0, -1)
     }
 
 
@@ -62,17 +40,19 @@ class RhombPoint:
 
     radius = 1
 
-    def set_radius(radius):
-        RhombPoint.radius = int(radius)
+    @classmethod
+    def set_radius(cls, radius):
+        cls.radius = int(radius)
 
+    @staticmethod
     def is_valid(x, y):
         return abs(x) + abs(y) <= RhombPoint.radius
 
     def __init__(self, x, y):
         if not RhombPoint.is_valid(x, y):
-            print("Provided coordinates fall outside", end=" ")
-            print(f"current grid radius of {RhombPoint.radius}.")
-            raise TypeError
+            msg = 'Provided coordinates fall outside '
+            msg += f'current grid radius of {RhombPoint.radius}.'
+            raise TypeError(msg)
         self.x = x
         self.y = y
 
@@ -81,14 +61,14 @@ class RhombPoint:
         yield self.y
 
     def __repr__(self):
-        return f"Rhombpoint({self.x},{self.y})"
+        return f'RhombPoint({self.x},{self.y})'
     
-    def __iadd__(self, move_string):
+    def __iadd__(self, move):
         '''Update point position given a L/R/U/D move'''
-        move = MOVES[move_string]
-        if RhombPoint.is_valid(self.x + move[0], self.y + move[1]):
-            self.x += move[0]
-            self.y += move[1]
+        dx, dy = MOVES[move]
+        if RhombPoint.is_valid(self.x + dx, self.y + dy):
+            self.x += dx
+            self.y += dy
         return self
 
 
@@ -96,14 +76,16 @@ def sign(num):
     '''Return the sign of a number as 0, 1 or -1'''
     return 0 if num == 0 else num // abs(num)
 
+
 def get_digit(radius, x, y):
     '''
     Given a part 2 type rhomb padlock of arbitrary size, and
     the coordinates of a key, determine corresponding digit
     '''
     if abs(x) + abs(y) > radius:
-        print(f"Invalid point coords for padlock of radius {radius}.")
-        raise ValueError
+        raise ValueError(
+            f'Invalid point coords for padlock of radius {radius}.'
+            )
     '''
     Consider the middle column. Moving from top row to center row
     increases the digit proportionally to the partial sums of the 
@@ -120,16 +102,35 @@ def get_digit(radius, x, y):
     digit = center_digit - sign(y) * row_distance + x
     return digit
 
-# Setting rhomb grid dimension to the one of the padlock
-RhombPoint.set_radius(RADIUS)
+if __name__ == '__main__':
 
-# Initial point corresponding to digit=5 for part 2
-point = RhombPoint(-2, 0)
+    with open('input.txt') as f:
+        instructions = [item.strip() for item in f]
 
-for key in instructions:
-    for move in key:
-        point += move
-    digit = get_digit(RADIUS, point.x, point.y)
-    solution_2.append((hex(digit)[2]).upper())
+    # ----------------------- Part 1 ------------------------- #
+    digit = 5
+    solution_1 = []
 
-print(solution_2)
+    for key in instructions:
+        for move in key:
+            digit += SQUARE_KEYPAD_SHIFTS[move](digit)
+        solution_1.append(str(digit))
+
+    print(''.join(solution_1))
+
+    # ----------------------- Part 2 ------------------------- #
+    solution_2 = []
+
+    # Setting rhomb grid dimension to the one of the padlock
+    RhombPoint.set_radius(RADIUS)
+
+    # Initial point corresponding to digit=5 for part 2
+    point = RhombPoint(-2, 0)
+
+    for key in instructions:
+        for move in key:
+            point += move
+        digit = get_digit(RADIUS, *point)
+        solution_2.append(format(digit,'X'))
+
+    print(''.join(solution_2))
