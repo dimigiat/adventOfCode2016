@@ -16,29 +16,31 @@ decrypted name "northpole object storage".
 
 from collections import Counter
 
-id_aggr = 0
 
-def rotate_char(s, shift):
+def rotate_string(s: str, shift: int) -> str:
     '''
     Shift all characters of string by shift characters, staying
     within lowercase ASCII (i.e. ... y -> z -> a -> b ...)
     '''
-    if not isinstance(s, str) or not isinstance(shift, int): 
-        raise TypeError
     shifted = [chr( (ord(c) - ord('a') + shift) % 26 + ord('a') ) 
                if c!='-' else ' ' for c in s]
     return ''.join(shifted)
 
-with open('input.txt') as data:
-    for room in data:
-        encr = room.strip()[:-11]
-        letters = ''.join(sorted(encr)).lstrip('-')
-        sid = int(room.strip()[-10:-7])
-        cks = room.strip()[-6:-1]
-        # Since letters are sorted, ties in Counter are broken alphabetically
-        if cks == ''.join([c for c,v in Counter(letters).most_common(5)]):
-            id_aggr += sid
-            if rotate_char(encr, sid) == "northpole object storage":
-                print(f"Sector ID of target room: {sid}")
 
-print(f"Sector ID sum of valid room entries: {id_aggr}")
+if __name__ == '__main__':
+
+    id_aggr = 0
+
+    with open('input.txt') as data:
+        for room in data:
+            room = room.strip()
+            encr = room[:-11]
+            letters = ''.join(sorted(encr)).lstrip('-')
+            sid, cks = int(room[-10:-7]), room[-6:-1]
+            # Letters are sorted, so ties in Counter are broken alphabetically
+            if cks == ''.join([c for c,_ in Counter(letters).most_common(5)]):
+                id_aggr += sid
+                if rotate_string(encr, sid) == 'northpole object storage':
+                    print(f'Sector ID of target room: {sid}')
+
+    print(f'Sector ID sum of valid room entries: {id_aggr}')

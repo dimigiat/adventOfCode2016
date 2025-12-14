@@ -20,42 +20,40 @@ from hashlib import md5
 from itertools import count
 from time import time
 
-# Using the b'...' bytes literal, which uses ASCII to encode the string, 
-# since input only consists of such characters, even after appending index   
-input = b'ffykfhsq'
 
-# ---- Part 1 ---- #
+def get_hash(prefix: bytes, number: int) -> str:
+    '''Append an integer to a bytes object, and return its MD5 hash in hex'''
+    return md5(prefix + str(number).encode()).hexdigest()
 
-start = time()
-password_1 = ''
-index = count()
 
-while len(password_1) < 8:
-    # Byte representation of ASCII characters (including number characters)
-    # remains identical under UTF8, so we can use 'ascii' or 'utf8' below
-    test_hash = md5(input + bytes(str(next(index)),'utf8')).hexdigest()
-    if test_hash.startswith('00000'):
-        password_1 += test_hash[5]
+if __name__ == '__main__':
+ 
+    # Since input only features ASCII characters, we can use a bytes literal. 
+    input_string = b'ffykfhsq'
 
-print(f"Part 1 password: {password_1}")
-print(time() - start)
+    # ------------ Part 1 ------------ #
+    start = time()
+    password_1 = ''
+    index = count()
 
-# ---- Part 2 ---- #
+    while len(password_1) < 8:
+        test = get_hash(input_string, next(index))
+        if test.startswith('00000'):
+            password_1 += test[5]
 
-start = time()
-password_2 = [None] * 8
-index = count()
+    print(f'Part 1 password: {password_1}')
+    print(f"Time: {time() - start:.2f}s")
 
-while None in password_2:
-    test_hash = md5(input + bytes(str(next(index)),'utf8')).hexdigest()
-    if test_hash.startswith('00000'):
-        try:
-            pos = int(test_hash[5])
-            if pos < 8 and password_2[pos]==None:
-                password_2[pos] = test_hash[6]
-        except ValueError:
-            continue
-        
+    # ------------ Part 2 ------------ #
+    start = time()
+    password_2 = [None] * 8
+    index = count()
 
-print(f"Part 2 password: {''.join(password_2)}")
-print(time() - start)
+    while None in password_2:
+        test = get_hash(input_string, next(index))
+        if test.startswith('00000') and (pos := int(test[5], 16)) < 8:
+            if password_2[pos] is None:
+                password_2[pos] = test[6]
+
+    print(f'Part 2 password: {"".join(password_2)}')
+    print(f"Time: {time() - start:.2f}s")
