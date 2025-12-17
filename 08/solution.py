@@ -73,7 +73,6 @@ if __name__ == '__main__':
     print()
 
     # View screen without matplotlib
-    translate = {True:'.', False:' '}
     for row in screen:
         print(''.join('#' if pixel else ' ' for pixel in row))
 
