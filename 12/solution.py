@@ -12,35 +12,65 @@ Part 1: Determine value of register a, after executing input instructions.
 Part 2: Same, but with register c initialized with 1.
 '''
 
+from typing import Literal
 
-# Change value of 'c' to 1 for part 2
-register = dict(zip(('a', 'b', 'c', 'd'), (0, 0, 0, 0)))
-current = 0
 
-def cpy(x, y):
-    register[y] = register[x] if x in register else eval(x)
+def value(register: dict[str, int], x: str) -> int:
+    return register[x] if x in register else int(x)
+
+
+def cpy(register: dict[str, int], x: str, y: str) -> Literal[1]:
+    register[y] = value(register, x)
     return 1
 
-def inc(x):
+
+def inc(register: dict[str, int], x: str) -> Literal[1]:
     register[x] += 1
     return 1
 
-def dec(x):
+
+def dec(register: dict[str, int], x: str) -> Literal[1]:
     register[x] -= 1
     return 1
 
-def jnz(x, y):
-    if x in register:
-        return eval(y) if register[x] != 0 else 1
-    else:
-        return eval(y) if eval(x) else 1
+
+def jnz(register: dict[str, int], x: str, y: str) -> int:
+    return value(register, y) if value(register, x) else 1
         
 
-with open('input.txt') as f:
-    instructions = f.readlines()
-    while current < len(instructions):
-        instr = instructions[current].split()
-        cmd, args = instr[0], instr[1:]
-        current += eval(cmd)(*args)   
+# Defined after function definitions because it refers to them
+COMMAND = {
+    "cpy": cpy,
+    "inc": inc,
+    "dec": dec,
+    "jnz": jnz
+}
 
-print(register)
+
+def run(instructions: list[list[str]], register: dict[str, int]) -> None: 
+    '''
+    Given a list of instructions and the initial values of a set of registers,
+    execute instructions, modifying the register values in-place. Stop when
+    index for next instruction gets beyond the number of instructions.
+    '''
+    current = 0
+    while current < len(instructions):
+        cmd, *args = instructions[current]
+        current += COMMAND[cmd](register, *args)
+
+
+if __name__ == '__main__':
+
+    with open('input.txt') as f:
+        instructions = [line.strip().split() for line in f]
+
+    # --------------- Part 1 -----------------
+    register = dict.fromkeys("abcd", 0)
+    run(instructions, register)
+    print(register)
+
+    # --------------- Part 2 -----------------
+    register = dict.fromkeys("abcd", 0)
+    register['c'] = 1
+    run(instructions, register)
+    print(register)
