@@ -20,15 +20,6 @@ Part 2: Same as part 1, but with 4 additional objects (microchips and
 generators for 2 additional elements), initially located at 1st floor.
 '''
 
-from itertools import combinations
-from time import time
-
-from more_itertools import locate
-
-
-NUM_FLOORS = 4
-
-
 '''
 We model the problem as a shortest path problem on the graph of
 valid object placements at any given moment. We don't calculate
@@ -51,8 +42,16 @@ of the two placements to the goal vertex of having all objects
 in the top floor are exactly the same.
 '''
 
+from itertools import combinations
+from collections import deque
+from time import time
 
-def is_valid(vertex):
+from more_itertools import locate
+
+NUM_FLOORS = 4
+
+
+def is_valid(vertex: tuple[int]) -> bool:
     '''
     Returns True if vertex satisfies problem constraints, else False.
     '''
@@ -67,44 +66,44 @@ def is_valid(vertex):
     return True
 
 
-def get_neighbors(vertex):
+def get_neighbors(vertex: tuple[int]) -> list[tuple[int]]:
     '''
     Given a vertex, return list of all vertices to which we can move 
     '''
     neighbors = []
     level = vertex[-1]
+    min_floor = min(vertex[:-1])
+
     # Locate objects present at current elevator level
     # (Converting to tuple, to consume the iterable twice)
     objects = tuple(locate(vertex[:-1], lambda x: x == level))
+
     # One object moves
     for obj in objects:
         if level < NUM_FLOORS - 1:
             nb = list(vertex)
             nb[obj], nb[-1] = (level + 1,) * 2
             neighbors.append(tuple(nb))
-        if level > 0:
-            # Don't move nothing downstairs if lower floors empty
-            if not any(floor in vertex for floor in range(level)):
-                continue
+        # Don't move nothing downstairs if lower floors empty
+        if level > min_floor:
             nb = list(vertex)
             nb[obj], nb[-1] = (level - 1,) * 2
             neighbors.append(tuple(nb))
+
     # Two object moves
     for obj_1, obj_2 in combinations(objects, 2):
         if level < NUM_FLOORS - 1:
             nb = list(vertex)
             nb[obj_1], nb[obj_2], nb[-1] = (level + 1,) * 3
             neighbors.append(tuple(nb))
-        if level > 0:
-            if not any(floor in vertex for floor in range(level)):
-                continue
+        if level > min_floor:
             nb = list(vertex)
             nb[obj_1], nb[obj_2], nb[-1] = (level - 1,) * 3
             neighbors.append(tuple(nb))
     return neighbors
 
 
-def get_equivalent(vertex):
+def get_equivalent(vertex: tuple[int]) -> list[tuple[int]]:
     '''
     Given a vertex, return list of equivalent vertices via
     interchanging combinations of pairs of elements.
@@ -124,17 +123,26 @@ def get_equivalent(vertex):
     return equivalent
 
 
-def shortest_path(initial, goal):
-    path_list = [[initial]]
-    path_index = 0
-    # Vertices visited
+def shortest_path(initial: tuple[int], goal: tuple[int]) -> list[tuple[int]]:
+    '''
+    Given an initial vertex and a goal vertex, return the sequence of valid
+    vertices that form the shortest path between them.
+    '''
+
+    # We implement BFS with inline paths, where each queue element is a
+    # path, i.e. a sequence of vertices. This is not the most efficient way to
+    # tackle the problem. It would be faster to save just the vertices in the
+    # deque, and maintain a dictionary for the parent vertex of each vertex.
+    # We chose the inline path solution for practice and benchmarking, and
+    # because it's clear and easily debuggable.
+    path_list = deque([[initial]])
     visited = {initial}
 
     if initial == goal:
-        return path_list[0]
+        return [goal]
     
-    while path_index < len(path_list):
-        current_path = path_list[path_index]
+    while path_list:
+        current_path = path_list.popleft()
         last_vertex = current_path[-1]
 
         # In an arbitrary graph, we get a vertex's neighbors from
@@ -143,64 +151,58 @@ def shortest_path(initial, goal):
         # Here we use the problem constraints, via the functions
         # is_valid and get_neighbors to get them on the go
         # whenever we encounter a new vertex in a path.
-
-        # We cast to a list, as we iterate over the neighbors twice,
-        # once to check for goal vertex, and once to add new paths.
-        next_vertices = list(filter(is_valid, get_neighbors(last_vertex)))
-        # Search goal vertex
-        if goal in next_vertices:
-            current_path.append(goal)
-            return current_path
-        # Add new paths
-        for next_vertex in next_vertices:
-            if not tuple(next_vertex) in visited:
-                path_list.append(current_path + [next_vertex])
+        # Paths with k vertices are examined before paths with k+1 vertices,
+        # thus we have BFS, and reaching goal means we found a shortest path.
+        for next_vertex in filter(is_valid, get_neighbors(last_vertex)):
+            if next_vertex not in visited:           
                 visited.add(next_vertex)
                 # Crucial speeding-up optimization: Elements are
                 # interchangable, we can switch any two and get
                 # a completely equivalent object arrangement.
                 for equivalent in get_equivalent(next_vertex):
                     visited.add(equivalent)
-        # Continue to next path in list
-        path_index += 1
+                new_path = current_path + [next_vertex]
+                if next_vertex == goal:
+                    return new_path
+                path_list.append(new_path)
     # No path is found
     return []
 
 
-# -------- Part 1 ----------
+if __name__ == '__main__':
 
-# The initial vertex for an element ordering of
-# (thulium, plutonium, promethium, strontium, ruthenium).
-# The order doesn't matter, as long as it is the same
-# for the microchips and the generators.
-initial = (0, 1, 2, 1, 2, 0, 0, 2, 0, 2, 0)
+    # -------- Part 1 ----------
 
-# Goal vertex is: all objects and elevator are on top floor
-goal = (3,) * 11
+    # The initial vertex for an element ordering of
+    # (thulium, plutonium, promethium, strontium, ruthenium).
+    # The order doesn't matter, as long as it is the same
+    # for the microchips and the generators.
+    initial = (0, 1, 2, 1, 2, 0, 0, 2, 0, 2, 0)
 
-start_1 = time()
+    # Goal vertex is: all objects and elevator are on top floor
+    goal = (3,) * 11
 
-ans = shortest_path(initial, goal)
-msg = ('The least amount of moves to get all the ' +
-       f'objects on the top floor is: {len(ans) - 1}')
+    start_1 = time()
 
-print(msg)
-print()
-print(f'Time elapsed for part 1: {time() - start_1}')
+    ans = shortest_path(initial, goal)
+    msg = ('The least amount of moves to get all the ' +
+        f'objects on the top floor is: {len(ans) - 1}')
 
+    print(msg)
+    print(f'Time elapsed for part 1: {time() - start_1}')
 
-# -------- Part 2 ---------
+    # -------- Part 2 ---------
 
-# Add microchips and generators for 2 more elements at 1st floor
-initial = (0, 1, 2, 1, 2, 0, 0, 0, 0, 2, 0, 2, 0, 0, 0)
-goal = (3,) * 15
+    # Add microchips and generators for 2 more elements at 1st floor
+    initial = (0, 1, 2, 1, 2, 0, 0, 0, 0, 2, 0, 2, 0, 0, 0)
+    goal = (3,) * 15
 
-start_2 = time()
+    start_2 = time()
 
-ans = shortest_path(initial, goal)
-msg = ('The least amount of moves to get all the ' +
-       f'objects on the top floor is: {len(ans) - 1}')
+    ans = shortest_path(initial, goal)
+    msg = ('The least amount of moves to get all the ' +
+        f'objects on the top floor is: {len(ans) - 1}')
 
-print(msg) 
-print()
-print(f'Time elapsed for part 2: {time() - start_2}')
+    print()
+    print(msg) 
+    print(f'Time elapsed for part 2: {time() - start_2}')
