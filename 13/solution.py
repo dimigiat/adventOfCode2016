@@ -7,56 +7,96 @@ For part two, we count the number of distinct free space points that we can
 visit in at most 50 steps.
 '''
 
-from collections import namedtuple
+from collections import namedtuple, deque
+from itertools import chain
+from functools import cache
+from typing import Generator
 
-favNum = 1358
-Point = namedtuple('Point', ['x', 'y'])
+
+FAVNUM = 1358
 
 
-def isFree(point):
-    x, y = point.x, point.y
-    num = x*x + 3*x + 2*x*y + y + y*y + favNum
-    return not bin(num).count('1') % 2
+Point = namedtuple('Point', 'x, y')
 
-def isValid(point):
+
+@cache
+def is_free(point: Point) -> bool:
+    '''
+    Return True/False depending on the number of 1's in the binary
+    representation of the result of a function of a point's coordinates.
+    '''
+    x, y = point
+    num = x*x + 3*x + 2*x*y + y + y*y + FAVNUM
+    return bin(num).count('1') % 2 == 0
+
+
+def is_valid(point: Point) -> bool:
     return point.x >= 0 and point.y >= 0
 
-def getNext(point):
-    x, y = point.x, point.y
-    neighbors = [Point(x-1,y), Point(x+1,y), Point(x,y-1), Point(x,y+1)]
-    return [n for n in neighbors if isValid(n) and isFree(n)]
 
-def shortestDistance(initial, goal):
-    if initial == goal:
-        return 0
-    numSteps = 0
-    paths = [[initial]]
-    visited = {initial}
-    while True:
-        numSteps += 1
-        for path in paths[:]:
-            for point in getNext(path[-1]):
-                if point == goal:
-                    return numSteps
-                # Avoid circles and longer paths to a point
-                if point not in visited:
-                    paths.append(path + [point])
-                    visited.add(point)
-            paths.remove(path)
+def _get_next(point: Point) -> Generator[Point, None, None]:
+    '''
+    Return list of neighboring and free points, for a given point.
+    '''
+    x, y = point
+    for nb in (Point(x-1, y), Point(x+1, y), Point(x, y-1), Point(x, y+1)):
+        if is_valid(nb) and is_free(nb):
+            yield nb
 
-def countPoints(initial, numSteps):
-    paths = [[initial]]
+
+def shortest_distance(initial: Point, goal: Point) -> int|None:
+    '''
+    Return the shortest grid distance between two points, provided
+    that only movements along a path of free points are allowed.
+    '''
     visited = {initial}
+    queue = deque([(initial, 0)])
+
+    while queue:
+        curr, dist = queue.popleft()
+        if curr == goal:
+            return dist
+        for nb in _get_next(curr):
+            if nb not in visited:
+                visited.add(nb)
+                queue.append((nb, dist + 1))
+
+    return None
+
+
+def count_points(initial: Point, numSteps: int) -> int:
+    '''
+    For an initial point and a given maximum number of steps, 
+    calculate the number of distinct free points that are reachable 
+    (considering all possible paths)
+    '''
+    visited = {initial}
+    frontier = [initial]
+
+    # NOTE: We could have followed a typical BFS implementation with
+    # a deque as we did for shortest distance, skipping expansion when we
+    # reach dist == numSteps. However, we chose to implement an iterative
+    # frontier expansion, for practicing the use of chain.from_iterable.
+
     for _ in range(numSteps):
-        for path in paths[:]:
-            for point in getNext(path[-1]):
-                # Avoid circles and longer paths to a point
-                if point not in visited:
-                    paths.append(path + [point])
-                    visited.add(point)
-            paths.remove(path)
+        frontier = [
+            p for p in chain.from_iterable(map(_get_next, frontier)) 
+            if p not in visited
+            ]
+        visited.update(frontier)
+
     return len(visited)
 
-initial, goal = Point(1, 1), Point(31, 39)
-print(f"We can reach the target in {shortestDistance(initial, goal)} steps.")
-print(f"In 50 steps we can visit {countPoints(initial, 50)} locations.")
+
+if __name__ == '__main__':
+
+    initial, goal = Point(1, 1), Point(31, 39)
+
+    # --------------- Part 1 -------------------- 
+    if (result_1 := shortest_distance(initial, goal)) is not None:
+        print(f'We can reach the goal node in {result_1} steps.')
+    else:
+        print('Goal node is unreachable.')
+
+    # --------------- Part 2 --------------------
+    print(f'In 50 steps we can visit {count_points(initial, 50)} locations.')
