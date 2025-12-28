@@ -8,21 +8,50 @@ sequence examining the equality of each non-overlapping pair of bits in it.
 We recursively apply the calculation until the checksum is of odd length.
 '''
 
-initState = list(map(bool, map(int, "00101000101111010")))
+from time import perf_counter
 
-def processed(data, diskLen):
-    while len(data) < diskLen:
-        data = data + [False] + list(map(lambda x: not x, data[::-1]))
-    return data[:diskLen]
 
-def checksum(data):
-    cksm = list(map(lambda x: x[0] == x[1], zip(data[::2], data[1::2])))
-    if len(cksm) % 2 == 0:
-        cksm = checksum(cksm)
-    return cksm
+INIT_STATE_STR = "00101000101111010"
 
-print("Part 1 checksum:", end=" ")
-print("".join(map(str, map(int, checksum(processed(initState, 272))))))
 
-print("Part 2 checksum:", end=" ")
-print("".join(map(str, map(int, checksum(processed(initState, 35651584))))))
+def expand(seed: bytearray, disk_len: int) -> bytearray:
+    """
+    Expand the dragon curve until disk_len is reached.
+    Uses bytearray for compact storage and speed.
+    """
+    data = seed
+    while len(data) < disk_len:
+        n = len(data)
+        data.append(0)
+        # reversed and bit-flipped copy
+        data.extend(1 - data[i] for i in range(n - 1, -1, -1))
+    return data[:disk_len]
+
+
+def checksum(data: bytearray) -> str:
+    """
+    Compute checksum iteratively until odd length.
+    """
+    while len(data) % 2 == 0:
+        data = bytearray(
+            1 if data[i] == data[i + 1] else 0
+            for i in range(0, len(data), 2)
+        )
+    return ''.join('1' if b else '0' for b in data)
+
+
+def solve(disk_len: int) -> str:
+    seed = bytearray(int(c) for c in INIT_STATE_STR)
+    data = expand(seed, disk_len)
+    return checksum(data)
+
+
+if __name__ == "__main__":
+    start = perf_counter()
+    print("Part 1 checksum:", solve(272))
+    print("Elapsed:", perf_counter() - start)
+
+    start = perf_counter()
+    print("Part 2 checksum:", solve(35651584))
+    print("Elapsed:", perf_counter() - start)
+
