@@ -1,122 +1,72 @@
 '''
-Elves are sitting in a circle and bring one present each. Starting from
-elf 1, each elf steals the present(s) of the next elf in the circle which
-is still in the game. An elf whose presents are stolen, automatically gets
-eliminated. In the end, one elf gets all the presents. The goal is to find
-its index, given the initial number of elves.
+Elves sitting in a circle bring one present each. Starting from elf 1, each elf
+steals the present(s) of the next elf in the circle which is still in the game.
+An elf whose presents are stolen gets eliminated. The last elf standing gets all
+the presents. The goal is to find its index, given the initial number of elves.
 
-For part 2, each elf steals a present from the elf right across the circle,
+For part 2, each elf steals presents from the elf right across the circle,
 and in case there are two elves across, from the one on its left. Other
 rules remain the same, we have to find the index of the winner again.
 '''
 
-from math import log2
-
 '''
 Part 1: A round starting with N elves ends with N//2 elves.
-Thus, for a given initial N, we have floor(log2(N)) rounds.
 After round i, indices of remaining elves are spaced by 2^i.
 After a round with even number of elves, the first elf still playing stays
 the same. After a round with odd number of elves, the previously first elf
 gets eliminated, so the first becomes firstIndex+2^i.
-It follows we just have to monitor the number of elves at each round and
-keep track of the first index, whose final value will be the winner.
+We observe that 2^i position increases match the binary representation
+of a number, but we have to shift that number left as i starts from 1 and not
+from 0. We find the winner via a masked left shift of N.
 
-This case admits a closed form solution (cf. Josephus Problem), and even a
-neat implementation via a 1-bit cyclic shift of the binary representation of N.
+Note: This is a special case of a (N,k) Josephus problem, for k=2.
 '''
 
-def getWinner1(numElves):
-    firstElf = 1
-    for round in range(1, int(log2(numElves))+1):
-        if numElves % 2 == 1:
-            firstElf = firstElf + 2**round
-        numElves = numElves // 2
+
+def get_winner_1(n_elves: int) -> int:
+    '''
+    Take the binary representation of n_elves. Starting from the LSB, each
+    1-valued bit represents an odd number as we repeatedly divide by 2. For
+    each division, the first_elf's position increases by 2^(i+1), where i
+    is the index of that bit. So, if we shift n_elves left once, each bit's
+    value now represents the respective increase. We need to ignore the MSB,
+    because we stop dividing once we end up with one elf, hence we mask the
+    left shifted n_elves. The resulting integer now represents the aggregate
+    position increase for the first elf, so adding 1 (the starting elf) to
+    that, we get the position of the winning elf, which we return. 
+    '''
+    return 1 + (n_elves << 1) & ((1 << n_elves.bit_length()) - 1) 
 
 
 '''
-For part 2, a round that starts with N elves finishes with (N-1)//3 + 1.
+Part 2: A round that starts with N elves finishes with (N-1)//3 + 1.
 So, for N initial elves, we have floor(log3(N-1)) rounds.
-The solution below has been borrowed from a reddit user.
 '''
 
-def getWinner2(numElves):
-    largest = 1
-    working = 1
-    for current in range(1, numElves + 1):
-        if working + 2 > current:
-            largest = working
-            working = 1
-        elif working < largest:
-            working += 1
-        else:
-            working += 2
-    return working
 
-print(f"Part 1: Winner elf is #{getWinner1(3014603)}")
-print(f"Part 2: Winner elf is #{getWinner2(3014603)}")
-#---------------------------------------------------------
+def get_winner_2(n: int) -> int:
+    '''
+    The opposite elf moves as the circle shrinks.
 
-'''
-2 -> 1
+    Let p be the largest power of 3 which is <= N
+    The winner elf is:
+    - If N == p  : N
+    - If N <= 2p : N - p
+    - Else       : 2N - 3p
+    '''
+    p = 1
+    while p * 3 <= n:
+        p *= 3
 
-3 -> 3
+    if n == p:
+        return n
+    elif n <= 2 * p:
+        return n - p
+    else:
+        return 2 * n - 3 * p
 
-4 -> 1, 2
-     1
 
-5 -> 2, 4
-     2
+if __name__ == '__main__':
 
-6 -> 3, 6
-     3
-
-7 -> 1, 3, 5
-     5
-
-8 -> 2, 4, 7
-     7
-
-9 -> 3, 6, 9
-     9
-
-10 -> 1, 4, 5, 8
-      1, 4
-      1
-
-11 -> 2, 5, 7, 10
-      2, 5
-      2
-
-12 -> 3, 6, 9, 12
-      3, 6
-      3
-
-13 -> 1, 4, 6, 8, 11
-      4, 8
-      4
-
-14 -> 2, 5, 7, 10, 13
-      5, 10
-      5
-
-15 -> 3, 6, 9, 12, 15
-      6, 12
-      6
-
-16 -> 1, 4, 7, 8, 11, 14
-      7, 14
-      7
-
-17 -> 2, 5, 8, 10, 13, 16
-      8, 16
-      8
-
-18 -> 3, 6, 9, 12, 15, 18
-      9, 18
-      9
-
-19 -> 1, 4, 7, 9, 11, 14, 17
-      1, 7, 11
-      11
-'''
+    print(f"Part 1: Winner elf is #{get_winner_1(3014603)}")
+    print(f"Part 2: Winner elf is #{get_winner_2(3014603)}")
