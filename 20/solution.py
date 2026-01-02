@@ -3,31 +3,49 @@ Given an unsorted list of (possibly overlapping) blacklisted IP blocks,
 where IPs are in their integer form (0 - 4294967295), we're asked to find
 the first non-blacklisted IP and the number of all non-blacklisted IPs.
 '''
-
-with open("input.txt") as f:
-    sortedList = sorted(([int(ip) for ip in line.strip().split("-")] 
-                         for line in f))
     
 MAXIP = 4294967295
 
-def getLowestFree(sortedList):
-    rightEnd = -1
-    for block in sortedList:
-        if block[0] > rightEnd + 1:
-            return rightEnd + 1
-        rightEnd = max(rightEnd, block[1])
-    return rightEnd + 1 if (rightEnd + 1) <= MAXIP else None
 
-def freeIPCount(sortedList):
+def get_lowest_free(sorted_list: list[tuple[int, int]]) -> int|None:
+    '''
+    Given a sorted list of blacklisted blocks of integers, return the lowest
+    non-blacklisted integer in 0-MAXIP, or None if all are blacklisted.
+    '''
+    right_end = -1
+
+    for block in sorted_list:
+        if block[0] > right_end + 1:
+            return right_end + 1
+        right_end = max(right_end, block[1])
+
+    return right_end + 1 if (right_end + 1) <= MAXIP else None
+
+
+def free_ip_count(sorted_list: list[tuple[int, int]]) -> int:
+    '''
+    Given a sorted list of blacklisted blocks of integers, return the number 
+    of non-blacklisted integers in 0-MAXIP.
+    '''
     count = 0
-    rightEnd = -1
-    for block in sortedList:
-        if block[0] > rightEnd + 1:
-            count += block[0] - rightEnd - 1
-        rightEnd = max(rightEnd, block[1])
-    if rightEnd < MAXIP:
-        count += MAXIP - rightEnd
+    right_end = -1
+
+    for block in sorted_list:
+        if block[0] > right_end + 1:
+            count += block[0] - right_end - 1
+        right_end = max(right_end, block[1])
+
+    if right_end < MAXIP:
+        count += MAXIP - right_end
+        
     return count
 
-print(f"Lowest non-blacklisted IP is {getLowestFree(sortedList)}")
-print(f"Number of non-blacklisted IPs: {freeIPCount(sortedList)}")
+
+if __name__ == '__main__':
+
+    with open("input.txt") as f:
+        # Blacklist IP blocks sorted by increasing start IP
+        sorted_list = sorted(tuple(map(int, line.split("-"))) for line in f)
+
+    print(f"Lowest non-blacklisted IP is {get_lowest_free(sorted_list)}")
+    print(f"Number of non-blacklisted IPs: {free_ip_count(sorted_list)}")
