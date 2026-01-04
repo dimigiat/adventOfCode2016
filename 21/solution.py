@@ -2,82 +2,131 @@
 Given an 8-character password, a sequence of given operations is 
 performed to scramble their order. We are asked to find the scrambled 
 version of a given password, and to unscramble another one.
-NOTE: Although it's not stated as a requirement, the 'rotateBased'
+NOTE: Although it's not stated as a requirement, the 'rotate_based'
 operation needs passwords of unique characters to be unambiguously 
 reversible regardless of the specific password.
 '''
 
 import re
 
-ARGPATTERN = re.compile(r"\b[0-7a-h]\b")
+ARG_PATTERN = re.compile(r'\b(\d+|[a-z])\b')
 
 
-def swapPosition(pswd, x, y, undo=False):
+def swap_position(pswd: str, x: int, y: int, *_) -> str:
+    '''Swap the characters of pswd at indices x and y'''
     chars = list(pswd)
     chars[x], chars[y] = chars[y], chars[x]
-    return "".join(chars)
+    return ''.join(chars)
 
-def swapLetter(pswd, x, y, undo=False):
-    return pswd.replace(x, 'Z').replace(y, x).replace('Z', y)
 
-def rotateLeft(pswd, steps, undo=False):
-    steps = steps % 8
+def swap_letter(pswd: str, x: str, y: str, *_) -> str:
+    '''Swap characters x and y in pswd'''
+    return pswd.replace(x, '*').replace(y, x).replace('*', y)
+
+
+def rotate_left(pswd: str, steps: int, undo: bool=False) -> str:
+    '''Rotate pswd cyclically steps positions to the left'''
+    steps = steps % len(pswd)
     if undo:
-        return rotateRight(pswd, steps)
+        return rotate_right(pswd, steps)
     else:
         return pswd[steps:] + pswd[:steps]
 
-def rotateRight(pswd, steps, undo=False):
-    steps = steps % 8
+
+def rotate_right(pswd: str, steps: int, undo: bool=False) -> str:
+    '''Rotate pswd cyclically steps positions to the right'''
+    steps = steps % len(pswd)
     if undo:
-        return rotateLeft(pswd, steps)
+        return rotate_left(pswd, steps)
     else:
         return pswd[-steps:] + pswd[:-steps]
 
-def rotateBased(pswd, x, undo=False):
-    ind = pswd.find(x)
-    if undo:
-        ind = getOldIndex(ind)
-    shift = ind + 1 + ind // 4
-    return rotateRight(pswd, shift, undo)
 
-def reversePositions(pswd, x, y, undo=False):
+def rotate_based(pswd: str, x: str, undo: bool=False) -> str:
+    '''
+    Rotate pswd right one time, plus a number of times equal to the index of
+    character x, plus one additional time if the index was at least 4.
+    '''
+    length = len(pswd)
+    ind = pswd.index(x)
+    if undo:
+        ind = _invert_rotate_based(length, ind)
+    shift = ind + 1 + (ind >= 4)
+    return rotate_right(pswd, shift, undo)
+
+
+def reverse_positions(pswd: str, x: int, y: int, *_) -> str:
+    '''Reverse the part of pswd between positions x and y'''
     return pswd[:x] + pswd[x:y+1][::-1] + pswd[y+1:]
 
-def movePosition(pswd, x, y, undo=False):
+
+def move_position(pswd: str, x: int, y: int, undo: bool=False) -> str:
+    '''Move character at position x in pswd to position y'''
     if undo:
         x, y = y, x
     chars = list(pswd)
     chars.insert(y, chars.pop(x))
-    return "".join(chars)
+    return ''.join(chars)
 
-def getOldIndex(newIndex):
-    '''
-    Solution of the modular equation used in rotateBased for old index 
-    old must be an integer in (0,7) for:
-        old = 4/9 * (new - 1 + 8*c) + d/9,
-        c in (0,2), 
-        d in (0,3)
-    '''
-    for c in range(3):
-        for d in range(4):
-            q, r = divmod(4 * (newIndex - 1 + 8*c) + d, 9)
-            if r == 0:
-                return q 
 
-def scrambled(password, instructions, undo=False):
+# Placed under function definitions as it refers to them
+COMMANDS = {
+    f.__name__: f
+    for f in (
+        swap_position,
+        swap_letter,
+        rotate_left,
+        rotate_right,
+        rotate_based,
+        reverse_positions,
+        move_position,
+    )
+}
+
+
+def _invert_rotate_based(length: int, index: int) -> int:
+    '''
+    Given a password length and the new index after a rotate_based operation,
+    return the original index of rotated character before rotation.
+    '''
+    for old in range(length):
+        shift = 1 + old + (old >= 4)
+        new = (old + shift) % length
+        if new == index:
+            return old
+    raise ValueError(f'Invalid rotate_based index: {index}')
+
+
+def scrambled(password: str, instructions: list[str], undo: bool=False) -> str:
+    '''
+    Given an initial password, apply all operations in a list of instructions
+    in order, and return the resulting scrambled password. If undo=True,
+    apply the inverse of each operation, iterating over them in reverse order
+    and passing the undo=True flag to the respective functions, to finally
+    return the unscrambled password.
+    '''
+    if len(password) != len(set(password)):
+        raise ValueError('Password must contain unique characters')
+
     if undo:
-        instructions = instructions[::-1]
+        instructions = reversed(instructions)
+
     for instr in instructions:
-        cmd = instr.split()[0] + instr.split()[1].capitalize()
+        cmd = '_'.join(instr.split()[:2])
         args = [int(c) if c.isdigit() else c 
-                for c in re.findall(ARGPATTERN, instr)]
-        password = eval(cmd)(password, *args, undo)
+                for c in ARG_PATTERN.findall(instr)]
+        if cmd in COMMANDS:
+            password = COMMANDS[cmd](password, *args, undo)
+        else:
+            raise ValueError(f'Unknown instruction: {instr.strip()}')
+
     return password
 
 
-with open("input.txt") as f:
-    instructions = f.readlines()
+if __name__ == '__main__':
 
-print(f"Part 1: {scrambled('abcdefgh', instructions)}")
-print(f"Part 2: {scrambled('fbgdceah', instructions, undo = True)}")
+    with open('input.txt') as f:
+        instructions = f.readlines()
+
+    print(f'Part 1: {scrambled('abcdefgh', instructions)}')
+    print(f'Part 2: {scrambled('fbgdceah', instructions, undo = True)}')
