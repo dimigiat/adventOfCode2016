@@ -49,6 +49,7 @@ import re
 
 from typing import NamedTuple
 from collections import deque
+from itertools import product
 
 ACCESS_COORDS = (0, 0)
 INITIAL_GOAL_COORDS = (29, 0)
@@ -183,12 +184,11 @@ def get_empty_pos(grid: dict[Position, NodeStat]) -> Position:
     return pos
 
 
-def make_neighbor_map(grid: dict[Position, NodeStat],
-                      walls: set[Position],
+def make_neighbor_map(walls: set[Position],
                       xsize: int,
                       ysize: int) -> dict[Position, list[Position]]:
     '''
-    Given grid data and dimensions, and positions of walls, 
+    Given grid dimensions and positions of walls, 
     return a map from non-wall positions to neighboring positions.
     '''
 
@@ -215,7 +215,12 @@ def make_neighbor_map(grid: dict[Position, NodeStat],
 
         return nb_list
     
-    return {pos: neighbors(pos) for pos in grid if pos not in walls}
+    grid_range = (
+        Position(i, j) 
+        for i, j in product(range(xsize), range(ysize))
+    )
+
+    return {pos: neighbors(pos) for pos in grid_range if pos not in walls}
 
 
 def next_states(current: State, 
@@ -276,7 +281,7 @@ if __name__ == '__main__':
 
     initial_empty_pos = get_empty_pos(grid)
 
-    neighbor_map = make_neighbor_map(grid, walls, xsize, ysize)
+    neighbor_map = make_neighbor_map(walls, xsize, ysize)
 
     initial_goal_pos = Position(*INITIAL_GOAL_COORDS)
     access_pos = Position(*ACCESS_COORDS)
